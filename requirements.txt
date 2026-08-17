@@ -1,0 +1,9 @@
+# Analysis / figures
+numpy>=1.26
+pandas>=2.0
+matplotlib>=3.8
+scipy>=1.11
+statsmodels>=0.14
+
+# Used by the strategies for state serialisation, as in the competition runtime
+jsonpickle>=3.0
