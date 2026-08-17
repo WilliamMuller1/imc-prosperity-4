@@ -98,8 +98,7 @@ Three practical warnings, all of which cost us time:
 
 1. **`mid_price` is meaningless when a side is empty.** About 8% of Round-1 snapshots are missing a
    quote on one side (4.0% no bid, 3.9% no ask, 0.16% neither); the file still emits a row. Left in, those rows destroy every summary statistic you
-   compute. The standard deviation of osmium's mid goes from 4.8 to 404. Filter first
-   ([`research/prosperity_io.py`](../research/prosperity_io.py) does).
+   compute. The standard deviation of osmium's mid goes from 4.8 to 404. Filter first.
 2. **A day is 1,000,000 timestamps, not 100,000.** Ten thousand snapshots at a step of 100. Getting
    this wrong silently corrupts every time-to-expiry and drift calculation.
 3. **The tape is bot-versus-bot.** It records what happened *without you in the book*. It is the right

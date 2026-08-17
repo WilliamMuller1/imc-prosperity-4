@@ -2,10 +2,7 @@
 
 **Products** 50 new goods in 10 families of 5; everything from earlier rounds delisted. Position
 limit **10** on every product.
-**Code** [`strategies/lattice_reversal.py`](../strategies/lattice_reversal.py) ·
-[`research/figures/fig_round5.py`](../research/figures/fig_round5.py) ·
-[`research/stats_tools.py`](../research/stats_tools.py) (`pairwise_coint_scan`, `random_walk_null`,
-`detect_jumps`)
+**Code** [`strategies/lattice_reversal.py`](../strategies/lattice_reversal.py)
 
 ---
 
@@ -110,8 +107,7 @@ Replaying one generic detector across products, with no per-product tuning, show
 | `ROBOT_IRONING` | −5,971 |
 | `PEBBLES_XL` (the decoy) | −7,875 |
 
-*(Replay caveats in [`research/replay.py`](../research/replay.py): treat the magnitudes as a lower
-bound and a comparison, not a score estimate.)*
+*(Treat the magnitudes as a lower bound and a comparison, not a score estimate.)*
 
 ### Arm it everywhere
 

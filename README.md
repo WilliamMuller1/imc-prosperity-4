@@ -110,7 +110,8 @@ To that end, we spent a significant amount of time building two tools we conside
 multimodal agentic research pipeline, internally called alpha_researcher_v2, that multiplied our
 research capacity well beyond what two people could manage by hand, and an internal harness,
 Mythos, also our team name, whose only job was to break a candidate idea against a battery of
-statistical tests: out-of-sample Sharpe, bootstrapping, and more.
+statistical tests: Sharpe ratio, Deflated Sharpe ratio, VaR/CVaR, win ratio, HHI concentration, and
+bootstrap confidence intervals.
 
 For real market applications, and for any future Prosperity run, we are keeping both tools as trade
 secrets and will not be publishing them here.
@@ -243,9 +244,10 @@ would pay eleven times the whole signal to trade it, and the deep strikes have n
 What the chain *is* good for is expressing the underlying's mean reversion with delta-sized leverage.
 Velvetfruit reverts around 5,250 with a deviation σ of 15.6, and each voucher is that deviation times
 its delta. Our submission ran thirteen delta-adjusted voucher positions off that single view, entering
-at roughly ±23 ticks of underlying deviation, with every reference level tracked by an EWMA rather
-than fixed and with shared-leg accounting so that overlapping positions could not jointly breach a
-voucher's limit. The whole top of the board converged on the same trade at ±18, ±28 and ±8.
+at roughly ±23 ticks of underlying deviation (about 1.5× velvetfruit's own σ of 15.6, enough to
+trade real excursions without firing on every wiggle inside the band), with every reference level
+tracked by an EWMA rather than fixed and with shared-leg accounting so that overlapping positions
+could not jointly breach a voucher's limit.
 [`strategies/voucher_delta_expression.py`](strategies/voucher_delta_expression.py) is one position of
 that book.
 
@@ -390,8 +392,7 @@ each of our five picks was close to a coin flip, not the 80-90% the R² figures 
 The bet paid off, but it is still the weakest thing we submitted. The market-making floor and the
 lattice trade were skill; the directional overlay was five roughly 50/50 positions we chose to accept
 at the position limit. That is a defensible decision *as a tournament choice*, and a poor one as a
-research conclusion, and the two
-should never be confused.
+research conclusion, and the two should never be confused.
 
 ### An identity, a trade, and telling them apart
 
@@ -446,13 +447,6 @@ far more places than any algorithmic choice did.
 ```
 imc-prosperity-4/
 ├── docs/               deep dives: the competition, each round, our method, the lessons
-├── research/           the analysis library
-│   ├── prosperity_io.py    loading/cleaning the capsules; wall mid, spread, imbalance
-│   ├── style.py            shared plotting style
-│   ├── options.py          Black-Scholes, implied vol, greeks, time-to-expiry conventions
-│   ├── stats_tools.py      OU fits, ADF, event studies, multiple-testing scans, bootstraps
-│   ├── replay.py           a small, explicit order-book replay harness
-│   └── figures/            one script per round; regenerates every figure in this README
 ├── strategies/         readable reference implementations of the ideas above
 ├── figures/            generated output (committed so the README renders)
 └── images/             leaderboards and competition material
@@ -462,24 +456,7 @@ imc-prosperity-4/
 
 The files in [`strategies/`](strategies/) are teaching versions, not our submissions: one idea each,
 parameters at the top, short enough to read in one sitting. They import the competition's
-`datamodel` when it is available and fall back to a local shim so they can be replayed offline:
-
-```bash
-python - <<'PY'
-from pathlib import Path
-from research.prosperity_io import DataRoot
-from research.replay import replay
-import strategies.anchored_market_maker as strat
-
-root = DataRoot(Path("data"))
-r = replay(root.prices(1), strat.Trader(), {"ASH_COATED_OSMIUM": 80},
-           trades=root.trades(1), day=0)
-print(r.summary())
-PY
-```
-
-Read [the fill-model caveats](research/replay.py) before quoting any PnL number the harness
-produces. It is a lower bound and a comparison tool, not an estimate of a competition score.
+`datamodel` module directly, so they are ready to drop into the Prosperity IDE as-is.
 
 ---
 
@@ -493,4 +470,4 @@ edition, that is the point of it.
 Code is MIT-licensed ([`LICENSE`](LICENSE)). The competition data, product names and screenshots are
 IMC's.
 
-*Tom Decort · William Muller · KU Leuven, 2026*
+*William Muller · Tom Decort · KU Leuven, 2026*

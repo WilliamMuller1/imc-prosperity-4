@@ -3,8 +3,7 @@
 **Products** `ASH_COATED_OSMIUM`, `INTARIAN_PEPPER_ROOT` · position limit 80 each
 **Data** three sample days · ~27,700 two-sided snapshots after cleaning
 **Code** [`strategies/anchored_market_maker.py`](../strategies/anchored_market_maker.py),
-[`strategies/deterministic_drift.py`](../strategies/deterministic_drift.py) ·
-[`research/figures/fig_round1.py`](../research/figures/fig_round1.py)
+[`strategies/deterministic_drift.py`](../strategies/deterministic_drift.py)
 
 ---
 
@@ -136,10 +135,9 @@ Replaying the reference implementation across the sample days:
 Read that table with its limits stated. It saturates at +10, which is exactly where the sample tape
 stops printing (maximum pepper aggression: +10.6), so the flat section is a property of the tape and
 not of the quote. And the harness matches passive orders against a fixed tape, so it has no model of
-fill probability and will always prefer a wider quote. See the caveats in
-[`research/replay.py`](../research/replay.py). What it legitimately shows is that a symmetric quote
-*at* fair value is worse than holding, because it gives up drift for zero edge. The benchmark row is a
-reference point, not a ceiling.
+fill probability and will always prefer a wider quote. What it legitimately shows is that a symmetric
+quote *at* fair value is worse than holding, because it gives up drift for zero edge. The benchmark
+row is a reference point, not a ceiling.
 
 Our submitted algorithm swept the ask book to the limit, rested a bid a few ticks under the touch and
 offered 15 ticks above it. That is the right first-order decision and the wrong second-order one: at

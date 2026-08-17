@@ -2,8 +2,6 @@
 
 **Products** unchanged from Round 3 · **New information** every print on the tape now carries a
 counterparty identity: `Mark 01`, `Mark 14`, `Mark 22`, `Mark 38`, `Mark 49`, `Mark 55`, `Mark 67`
-**Code** [`research/figures/fig_round4.py`](../research/figures/fig_round4.py),
-[`research/stats_tools.py`](../research/stats_tools.py) (`event_study`)
 
 ---
 

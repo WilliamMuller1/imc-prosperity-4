@@ -3,9 +3,7 @@
 **Products** `HYDROGEL_PACK` (limit 200), `VELVETFRUIT_EXTRACT` (200), ten call vouchers
 `VEV_4000 … VEV_6500` (300 each) · **TTE** 5 days at the start of the scored round
 **Code** [`strategies/synthetic_forward_mm.py`](../strategies/synthetic_forward_mm.py),
-[`strategies/voucher_delta_expression.py`](../strategies/voucher_delta_expression.py) ·
-[`research/figures/fig_round3.py`](../research/figures/fig_round3.py),
-[`research/options.py`](../research/options.py)
+[`strategies/voucher_delta_expression.py`](../strategies/voucher_delta_expression.py)
 
 ---
 
