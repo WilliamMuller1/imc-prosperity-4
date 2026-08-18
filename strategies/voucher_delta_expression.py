@@ -27,13 +27,20 @@ Three things this file is written to demonstrate:
   three sample days);
 * both legs are sent in the same tick at prices already resting, so a fill on one
   leg without the other is impossible.
+
+One thing the executable test is *not*. Crossing both legs costs half the pair's
+executable width - about 3.7 ticks - so ``cost_to_buy`` sits that far above the
+instantaneous hedged residual by construction. Demanding ``cost_to_buy <= ref``
+outright therefore asks the residual to be 3.7 ticks through its own EWMA mean,
+which is 5.8 sigma of a 0.64-tick dispersion: that is the cross-strike pair rule
+from the write-up, and it does not trigger once in 30,000 snapshots. The alpha
+here is the underlying's deviation, so the executable comparison is a **cost
+guard** sized to that half-width, not a second signal. Get this backwards and the
+strategy is silently switched off.
 """
 from typing import Dict, List, Tuple
 
-try:
-    from datamodel import Order, OrderDepth, TradingState
-except ImportError:
-    from research.datamodel import Order, OrderDepth, TradingState
+from datamodel import Order, OrderDepth, TradingState
 
 import jsonpickle
 
@@ -45,6 +52,7 @@ ANCHOR = 5_250.0        # velvetfruit's mean-reversion level
 BETA = 0.79             # Delta(LEG) - Delta(OFFSET), read off the delta ladder
 ENTRY = 23.0            # ticks of |S - ANCHOR| required to open
 EXIT = 4.0              # ticks of |S - ANCHOR| at which to close
+COST_SLACK = 4.0        # ticks we will pay through `ref` to cross both legs
 EWMA_SPAN = 500         # snapshots
 POS_LIMIT = 150         # units of the combination
 LEG_LIMIT = 300
@@ -52,6 +60,12 @@ LEG_LIMIT = 300
 
 def touch(d: OrderDepth) -> Tuple[int, int]:
     return max(d.buy_orders), min(d.sell_orders)
+
+
+def wall_mid(d: OrderDepth) -> float:
+    bid = max(d.buy_orders.items(), key=lambda kv: kv[1])[0]
+    ask = max(d.sell_orders.items(), key=lambda kv: -kv[1])[0]
+    return (bid + ask) / 2.0
 
 
 class Trader:
@@ -69,8 +83,7 @@ class Trader:
 
         a_bid, a_ask = touch(depths[LEG])
         b_bid, b_ask = touch(depths[OFFSET])
-        s_bid, s_ask = touch(depths[SPOT])
-        s_mid = (s_bid + s_ask) / 2.0
+        s_mid = wall_mid(depths[SPOT])
 
         # The combination's fair level, tracked rather than assumed: the surface
         # re-prices as time to expiry shrinks, so a fixed constant decays.
@@ -87,7 +100,8 @@ class Trader:
         pos_b = state.position.get(OFFSET, 0)
         orders: Dict[str, List[Order]] = {}
 
-        # Executable prices, delta-adjusted on the same footing as `ref`.
+        # Executable prices, delta-adjusted on the same footing as `ref`. These
+        # gate the trade on cost, not on alpha - see the module docstring.
         cost_to_buy = a_ask - b_bid - BETA * dev
         rev_to_sell = a_bid - b_ask - BETA * dev
 
@@ -95,14 +109,14 @@ class Trader:
             orders.setdefault(LEG, []).append(Order(LEG, px_a, qty_a))
             orders.setdefault(OFFSET, []).append(Order(OFFSET, px_b, qty_b))
 
-        if dev <= -ENTRY and cost_to_buy <= ref:
+        if dev <= -ENTRY and cost_to_buy <= ref + COST_SLACK:
             # underlying is cheap: buy delta, offset with the high strike
             q = min(-depths[LEG].sell_orders[a_ask], depths[OFFSET].buy_orders[b_bid],
                     POS_LIMIT - pos, LEG_LIMIT - pos_a, LEG_LIMIT + pos_b)
             if q > 0:
                 send(a_ask, q, b_bid, -q)
                 store["pos"] = pos + q
-        elif dev >= ENTRY and rev_to_sell >= ref:
+        elif dev >= ENTRY and rev_to_sell >= ref - COST_SLACK:
             q = min(depths[LEG].buy_orders[a_bid], -depths[OFFSET].sell_orders[b_ask],
                     POS_LIMIT + pos, LEG_LIMIT + pos_a, LEG_LIMIT - pos_b)
             if q > 0:

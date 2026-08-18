@@ -19,13 +19,16 @@ What the relationship is worth is *inventory-free market making*. In a
 within one tick is close to free money, and the underlying can be traded against
 any fill to remove the delta. The general lesson: knowing fair value precisely
 is usually worth far more as a quoting edge than as a taking edge.
+
+One estimator note, because ``S`` enters the fair value one-for-one. The
+underlying's median spread is only 5 ticks, so a touch mid moves whenever a thin
+quote appears or disappears and drags both of our quotes with it. We derive the
+fair value from the *wall* mid - the midpoint of the deepest level on each side -
+for the same reason we do in Round 1, and cross at the touch when we hedge.
 """
 from typing import Dict, List, Tuple
 
-try:
-    from datamodel import Order, OrderDepth, TradingState
-except ImportError:  # local replay
-    from research.datamodel import Order, OrderDepth, TradingState
+from datamodel import Order, OrderDepth, TradingState
 
 SPOT = "VELVETFRUIT_EXTRACT"
 VOUCHER = "VEV_4000"
@@ -45,6 +48,13 @@ def touch(d: OrderDepth) -> Tuple[int, int]:
     return max(d.buy_orders), min(d.sell_orders)
 
 
+def wall_mid(d: OrderDepth) -> float:
+    """Mid of the deepest level on each side - far less noisy than the touch."""
+    bid = max(d.buy_orders.items(), key=lambda kv: kv[1])[0]
+    ask = max(d.sell_orders.items(), key=lambda kv: -kv[1])[0]
+    return (bid + ask) / 2.0
+
+
 class Trader:
     def run(self, state: TradingState) -> Tuple[Dict[str, List[Order]], int, str]:
         d_s = state.order_depths.get(SPOT)
@@ -54,15 +64,15 @@ class Trader:
             return {}, 0, ""
 
         s_bid, s_ask = touch(d_s)
-        fair = (s_bid + s_ask) / 2.0 - STRIKE
+        fair = wall_mid(d_s) - STRIKE
 
         pos_v = state.position.get(VOUCHER, 0)
         pos_s = state.position.get(SPOT, 0)
         skew = INVENTORY_SKEW * pos_v
 
         orders: Dict[str, List[Order]] = {VOUCHER: []}
-        bid_px = int(fair - QUOTE_EDGE - skew)
-        ask_px = int(fair + QUOTE_EDGE - skew) + 1
+        bid_px = int((fair - QUOTE_EDGE - skew) // 1)
+        ask_px = -int((-(fair + QUOTE_EDGE - skew)) // 1)
 
         buy_size = min(MAX_QUOTE_SIZE, VOUCHER_LIMIT - pos_v)
         sell_size = min(MAX_QUOTE_SIZE, VOUCHER_LIMIT + pos_v)
