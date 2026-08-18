@@ -178,21 +178,9 @@ round was sitting, and we left it on the table.
 Rounds 1 and 2 are a qualifier, and a qualifier only pays once: clear the 200,000-XIREC threshold and
 the leaderboard is reset to zero for Phase 2. Nothing else about a Phase-1 score carries forward.
 
-Round 1 left us around **900th of 18,803 teams**, inside the top 5%, comfortably on track to
-qualify, and nowhere near where we wanted to be. Round 2 relisted the same two products and added a
-sealed bid for extra market access. Another 72 hours spent on osmium and pepper root would have bought
-us a better number on a board that was about to be wiped, so we switched objectives and optimised for
-the probability of clearing the threshold rather than for the score itself.
-
-The submission was deliberately risk-averse: the two mechanical edges we were confident in (a
-constant anchor on osmium, a known drift function on pepper root), stripped of anything speculative,
-sized conservatively, with no exposure we could not explain. On the manual side we submitted a minimal
-allocation and moved on. The rest of the round, and the four-day intermission behind it, went into the
-research and evaluation tooling that Rounds 3–5 would actually be decided on.
-
-That is the one strategic call from Phase 1 we would make again, and it is why there is no Round-2
-write-up here. We optimised the round for certainty rather than for edge, which is the right
-tournament decision and produces no research worth teaching from.
+Round 1 already left us around **900th of 18,803 teams**, comfortably through. With qualification
+essentially secured, we played Round 2 safe rather than for edge, and put the time into the tooling
+that Rounds 3–5 would actually be decided on instead. That is why there is no Round-2 write-up here.
 
 ---
 
