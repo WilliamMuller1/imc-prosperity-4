@@ -1,33 +1,3 @@
-"""Market making around a fair value that is a known function of time.
-
-Round-1 pepper root is not a random walk. Regressing mid on timestamp returns
-
-    F(t) = 12_000 + 1_000 * day + t / 1_000
-
-with a residual standard deviation of 1.24 ticks against a 13-tick quoted
-spread (``figures/r1_pepper_deterministic_drift.png``). Once you have F(t) the
-strategy is the same anchored market maker as ``anchored_market_maker.py`` with
-a moving anchor - plus one twist: because F is monotonically increasing, being
-long is cheaper than being flat, so the inventory target is positive rather
-than zero.
-
-Two things to note about the constants below.
-
-``DAY`` is a real parameter, not decoration. The intercept steps by exactly
-1,000 per day (9,999.96 / 10,999.95 / 11,999.98 on the three sample days), so
-``DAY = 0`` reproduces the last sample day and the scored day needs ``DAY = 1``.
-Leaving it out of the code while leaving it in the formula is how you ship a
-fair value that is 1,000 ticks low.
-
-``TARGET_INVENTORY`` is 76, not the full 80. Our submission swept the ask book
-to the limit, which is the right first-order decision and the wrong
-second-order one: at 80 of 80 there is no capacity left to take a cheap ask or
-to quote into a thin book. Four units of headroom cost 4/80 of the drift and
-buy back the optionality.
-
-The lesson generalises past this product. Before modelling a price as
-stochastic, check whether the organisers made it deterministic.
-"""
 from typing import Dict, List, Tuple
 
 from datamodel import Order, OrderDepth, TradingState
@@ -35,19 +5,18 @@ from datamodel import Order, OrderDepth, TradingState
 PRODUCT = "INTARIAN_PEPPER_ROOT"
 POSITION_LIMIT = 80
 
-DRIFT_PER_TICK = 1e-3     # +1 price unit per 1,000 timestamps
-BASE_FAIR = 12_000.0      # day-0 intercept of the sample data
-DAY_STEP = 1_000.0        # the intercept steps by exactly this much per day
-DAY = 0                   # 0 = last sample day; the scored day is the next one
-TARGET_INVENTORY = 76     # long bias, minus four units of headroom
-ENTRY_PREMIUM = 12        # ticks above fair we will pay to reach the target long
-BID_EDGE = 2              # how far below fair we bid
-ASK_EDGE = 15             # how far above fair we offer - deliberately far away
-INVENTORY_SKEW = 0.0      # inventory is an asset here, not a risk
+DRIFT_PER_TICK = 1e-3
+BASE_FAIR = 12_000.0
+DAY_STEP = 1_000.0
+DAY = 0
+TARGET_INVENTORY = 76
+ENTRY_PREMIUM = 12
+BID_EDGE = 2
+ASK_EDGE = 15
+INVENTORY_SKEW = 0.0
 
 
 def fair_value(timestamp: int) -> float:
-    """Read the module globals at call time so a sweep can rebind them."""
     return BASE_FAIR + DAY_STEP * DAY + DRIFT_PER_TICK * timestamp
 
 
@@ -64,9 +33,6 @@ class Trader:
         working = pos
         bought = sold = 0
 
-        # While we are short of the inventory target the drift dominates the
-        # spread: 76 units of a +1,000/day drift is worth 76,000, and crossing
-        # a 13-tick spread to get there costs about 500. Pay it.
         take_limit = fair + (ENTRY_PREMIUM if working < TARGET_INVENTORY else 0)
         for ask in sorted(depth.sell_orders):
             if ask >= take_limit or working >= TARGET_INVENTORY:
@@ -77,9 +43,6 @@ class Trader:
                 working += qty
                 bought += qty
 
-        # Selling is expensive even at a premium to fair: the inventory we give
-        # up has to be bought back, and every unit we are not holding stops
-        # earning the drift. Only sell into a genuinely rich bid.
         for bid in sorted(depth.buy_orders, reverse=True):
             if bid <= fair + ASK_EDGE:
                 break
@@ -93,10 +56,6 @@ class Trader:
         bid_px = int((fair - BID_EDGE - skew) // 1)
         ask_px = -int((-(fair + ASK_EDGE - skew)) // 1)
 
-        # Capacity is checked per side against the *current* position, since the
-        # takes above may not fill. The bid is sized to the target rather than
-        # the limit, so the four units of headroom survive the passive fills
-        # too - that is the whole point of holding 76 instead of 80.
         buy_capacity = max(0, TARGET_INVENTORY - pos - bought)
         sell_capacity = max(0, POSITION_LIMIT + pos - sold)
         if buy_capacity:

@@ -1,60 +1,20 @@
-"""Expressing a mean-reversion view on the underlying through the option chain.
-
-Round-3 velvetfruit reverts around 5,250 with a deviation standard deviation of
-15.6 ticks and a half-life of ~377 snapshots. Every voucher is that deviation
-multiplied by its delta, so the chain is a set of leveraged expressions of one
-view rather than a set of independent instruments.
-
-Why not cross-strike relative value? Because it does not clear the spread. For
-the 5000/5400 pair, regressing out the underlying cuts sigma from 12.5 ticks to
-1.7, and around its own EWMA mean the residual disperses by only **0.64 ticks**
-against an **executable width of 7.42** - eleven times the whole signal. Quoting
-instead of taking is not an escape either: `VEV_5000` printed one unit in three
-sample days, so the leg with width has no flow and the leg with flow has no
-width (``figures/r3_pair_beta_hedge.png``, ``figures/r3_voucher_chain.png``).
-
-So the signal here is the underlying's deviation, and the second leg is a cheap
-high strike used to damp the outright delta rather than a relative-value partner.
-
-Three things this file is written to demonstrate:
-
-* the entry test is applied to the price you can actually trade at - the
-  ``beta * (S - anchor)`` term appears on *both* sides of the comparison. Mixing
-  a raw executable spread with a delta-adjusted reference silently turns the rule
-  into a directional one;
-* the reference level is an EWMA, not a constant, because the surface re-prices
-  as time to expiry shrinks (the hedged residual's own mean walks 3 ticks across
-  three sample days);
-* both legs are sent in the same tick at prices already resting, so a fill on one
-  leg without the other is impossible.
-
-One thing the executable test is *not*. Crossing both legs costs half the pair's
-executable width - about 3.7 ticks - so ``cost_to_buy`` sits that far above the
-instantaneous hedged residual by construction. Demanding ``cost_to_buy <= ref``
-outright therefore asks the residual to be 3.7 ticks through its own EWMA mean,
-which is 5.8 sigma of a 0.64-tick dispersion: that is the cross-strike pair rule
-from the write-up, and it does not trigger once in 30,000 snapshots. The alpha
-here is the underlying's deviation, so the executable comparison is a **cost
-guard** sized to that half-width, not a second signal. Get this backwards and the
-strategy is silently switched off.
-"""
 from typing import Dict, List, Tuple
 
 from datamodel import Order, OrderDepth, TradingState
 
 import jsonpickle
 
-LEG = "VEV_5000"        # the strike carrying the delta
-OFFSET = "VEV_5400"     # cheap high strike, damps the outright delta
+LEG = "VEV_5000"
+OFFSET = "VEV_5400"
 SPOT = "VELVETFRUIT_EXTRACT"
 
-ANCHOR = 5_250.0        # velvetfruit's mean-reversion level
-BETA = 0.79             # Delta(LEG) - Delta(OFFSET), read off the delta ladder
-ENTRY = 23.0            # ticks of |S - ANCHOR| required to open
-EXIT = 4.0              # ticks of |S - ANCHOR| at which to close
-COST_SLACK = 4.0        # ticks we will pay through `ref` to cross both legs
-EWMA_SPAN = 500         # snapshots
-POS_LIMIT = 150         # units of the combination
+ANCHOR = 5_250.0
+BETA = 0.79
+ENTRY = 23.0
+EXIT = 4.0
+COST_SLACK = 4.0
+EWMA_SPAN = 500
+POS_LIMIT = 150
 LEG_LIMIT = 300
 
 
@@ -85,23 +45,18 @@ class Trader:
         b_bid, b_ask = touch(depths[OFFSET])
         s_mid = wall_mid(depths[SPOT])
 
-        # The combination's fair level, tracked rather than assumed: the surface
-        # re-prices as time to expiry shrinks, so a fixed constant decays.
         fair = ((a_bid + a_ask) / 2.0 - (b_bid + b_ask) / 2.0) - BETA * (s_mid - ANCHOR)
         alpha = 2.0 / (EWMA_SPAN + 1.0)
         ref = store.get("ref")
         ref = fair if ref is None else alpha * fair + (1 - alpha) * ref
         store["ref"] = ref
 
-        # The signal is the underlying, not the cross-strike residual.
         dev = s_mid - ANCHOR
         pos = int(store.get("pos", 0))
         pos_a = state.position.get(LEG, 0)
         pos_b = state.position.get(OFFSET, 0)
         orders: Dict[str, List[Order]] = {}
 
-        # Executable prices, delta-adjusted on the same footing as `ref`. These
-        # gate the trade on cost, not on alpha - see the module docstring.
         cost_to_buy = a_ask - b_bid - BETA * dev
         rev_to_sell = a_bid - b_ask - BETA * dev
 
@@ -110,7 +65,6 @@ class Trader:
             orders.setdefault(OFFSET, []).append(Order(OFFSET, px_b, qty_b))
 
         if dev <= -ENTRY and cost_to_buy <= ref + COST_SLACK:
-            # underlying is cheap: buy delta, offset with the high strike
             q = min(-depths[LEG].sell_orders[a_ask], depths[OFFSET].buy_orders[b_bid],
                     POS_LIMIT - pos, LEG_LIMIT - pos_a, LEG_LIMIT + pos_b)
             if q > 0:
