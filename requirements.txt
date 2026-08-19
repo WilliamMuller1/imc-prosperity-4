@@ -1,2 +1,0 @@
-# Used by the strategies for state serialisation, as in the competition runtime
-jsonpickle>=3.0
